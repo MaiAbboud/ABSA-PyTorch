@@ -13,7 +13,7 @@ from data_utils import build_tokenizer, build_embedding_matrix, Tokenizer4Bert, 
 from models import LSTM, IAN, MemNet, RAM, TD_LSTM, TC_LSTM, Cabasc, ATAE_LSTM, TNet_LF, AOA, MGAN, ASGCN, LCF_BERT
 from models.aen import CrossEntropyLoss_LSR, AEN_BERT
 from models.bert_spc import BERT_SPC
-from dependency_graph import dependency_adj_matrix
+# from dependency_graph import dependency_adj_matrix
 
 from transformers import BertModel
 
@@ -65,7 +65,7 @@ class Inferer:
         text_bert_indices = self.tokenizer.text_to_sequence("[CLS] " + text_left + " " + aspect + " " + text_right + " [SEP]")
         aspect_bert_indices = self.tokenizer.text_to_sequence("[CLS] " + aspect + " [SEP]")
 
-        dependency_graph = dependency_adj_matrix(text)
+        # dependency_graph = dependency_adj_matrix(text)
 
         data = {
             'concat_bert_indices': concat_bert_indices,
@@ -80,7 +80,7 @@ class Inferer:
             'right_with_aspect_indices': right_with_aspect_indices,
             'aspect_indices': aspect_indices,
             'aspect_boundary': aspect_boundary,
-            'dependency_graph': dependency_graph,
+            # 'dependency_graph': dependency_graph,
         }
 
         t_inputs = [torch.tensor([data[col]], device=self.opt.device) for col in self.opt.inputs_cols]
