@@ -251,7 +251,12 @@ def main():
         'laptop': {
             'train': './datasets/semeval14/Laptops_Train.xml.seg',
             'test': './datasets/semeval14/Laptops_Test_Gold.xml.seg'
+        },
+        'coursera': {
+            'train': './datasets/coursera/test_dataset.seg',
+            'test': './datasets/coursera/test_dataset.seg'
         }
+
     }
     input_colses = {
         'lstm': ['text_indices'],
