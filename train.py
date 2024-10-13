@@ -48,6 +48,9 @@ class Instructor:
                 embed_dim=opt.embed_dim,
                 dat_fname='{0}_{1}_embedding_matrix.dat'.format(str(opt.embed_dim), opt.dataset))
             self.model = opt.model_class(embedding_matrix, opt).to(opt.device)
+            if opt.only_embedding:
+                raise SystemExit("Exiting program, Embedding and tokenizer files are generated")
+
 
         self.trainset = ABSADataset(opt.dataset_file['train'], tokenizer)
         self.testset = ABSADataset(opt.dataset_file['test'], tokenizer)
@@ -182,8 +185,9 @@ class Instructor:
 def main():
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='bert_spc', type=str)
-    parser.add_argument('--dataset', default='laptop', type=str, help='twitter, restaurant, laptop')
+    # parser.add_argument('--model_name', default='bert_spc', type=str)
+    parser.add_argument('--model_name', default='aoa', type=str)
+    parser.add_argument('--dataset', default='coursera', type=str, help='twitter, restaurant, laptop')
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
     parser.add_argument('--lr', default=2e-5, type=float, help='try 5e-5, 2e-5 for BERT, 1e-3 for others')
@@ -206,6 +210,7 @@ def main():
     # The following parameters are only valid for the lcf-bert model
     parser.add_argument('--local_context_focus', default='cdm', type=str, help='local context focus mode, cdw or cdm')
     parser.add_argument('--SRD', default=3, type=int, help='semantic-relative-distance, see the paper of LCF-BERT model')
+    parser.add_argument('--only_embedding', default=False, type=str, help='only generate embedding embdding and tokenizer matrices using glove the break the code ')
     opt = parser.parse_args()
 
     if opt.seed is not None:
@@ -253,8 +258,12 @@ def main():
             'test': './datasets/semeval14/Laptops_Test_Gold.xml.seg'
         },
         'coursera': {
-            'train': './datasets/coursera/test_dataset.seg',
-            'test': './datasets/coursera/test_dataset.seg'
+            'train': './datasets/coursera/train_Coursera_dataset.seg',
+            'test': './datasets/coursera/test_Coursera_dataset.seg'
+        },
+        'coursera_with_negation': {
+            'train': './datasets/coursera/train_neg__Coursera_dataset.seg',
+            'test': './datasets/coursera/test_neg__Coursera_dataset.seg'
         }
 
     }
@@ -297,7 +306,7 @@ def main():
     opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') \
         if opt.device is None else torch.device(opt.device)
 
-    log_file = '{}-{}-{}.log'.format(opt.model_name, opt.dataset, strftime("%y%m%d-%H%M", localtime()))
+    log_file = 'log/{}-{}-{}.log'.format(opt.model_name, opt.dataset, strftime("%y%m%d-%H%M", localtime()))
     logger.addHandler(logging.FileHandler(log_file))
 
     ins = Instructor(opt)
