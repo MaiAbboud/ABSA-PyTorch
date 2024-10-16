@@ -44,11 +44,11 @@ class Instructor:
             tokenizer = build_tokenizer(
                 fnames=[opt.dataset_file['train'], opt.dataset_file['test']],
                 max_seq_len=opt.max_seq_len,
-                dat_fname='{0}_tokenizer.dat'.format(opt.dataset))
+                dat_fname='{0}_{1}_tokenizer.dat'.format(opt.dataset,opt.dataset_mode))
             embedding_matrix = build_embedding_matrix(
                 word2idx=tokenizer.word2idx,
                 embed_dim=opt.embed_dim,
-                dat_fname='{0}_{1}_embedding_matrix.dat'.format(str(opt.embed_dim), opt.dataset))
+                dat_fname='{0}_{1}_{2}_embedding_matrix.dat'.format(str(opt.embed_dim), opt.dataset, opt.dataset_mode))
             self.model = opt.model_class(embedding_matrix, opt).to(opt.device)
             if opt.only_embedding:
                 raise SystemExit("Exiting program, Embedding and tokenizer files are generated")
@@ -265,7 +265,14 @@ def main():
     parser.add_argument('--SRD', default=3, type=int, help='semantic-relative-distance, see the paper of LCF-BERT model')
     parser.add_argument('--only_embedding', default=False, type=bool, help='only generate embedding embdding and tokenizer matrices using glove the break the code ')
     # parser.add_argument('--only_evaluate', default=False, type=str, help='only evaluate the model, without training ')
-    parser.add_argument('--dataset_mode', default=" ", type=str, help='dataset to train the model on')
+    # dataset_mode for coursera datasets
+    # 'neg_false_keep_all'
+    # 'neg_flase_del_all'
+    # 'neg_flase_del_except_neg'
+    # 'neg_true_keep_all'
+    # 'neg_true_del_all'
+    # 'neg_true_del_except_neg'
+    parser.add_argument('--dataset_mode', default="", type=str, help='dataset to train the model on')
     opt = parser.parse_args()
 
     if opt.seed is not None:
