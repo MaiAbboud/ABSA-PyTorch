@@ -124,19 +124,34 @@ class Tokenizer4Bert:
 
 
 class ABSADataset(Dataset):
-    def __init__(self, fname, tokenizer):
+    def __init__(self, fname, tokenizer, mode):
         fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
         lines = fin.readlines()
         fin.close()
         # fin = open(fname+'.graph', 'rb')
         # idx2graph = pickle.load(fin)
         # fin.close()
+        match mode:
+            case 'neg_false_keep_all':
+                line_index = 1
+            case 'neg_flase_del_all':
+                line_index = 2
+            case 'neg_flase_del_except_neg':
+                line_index = 3
+            case 'neg_true_keep_all':
+                line_index = 4
+            case 'neg_true_del_all':
+                line_index = 5
+            case 'neg_true_del_except_neg':
+                line_index = 6
+            case _:
+                line_index = 0
 
         all_data = []
-        for i in range(0, len(lines), 3):
-            text_left, _, text_right = [s.lower().strip() for s in lines[i].partition("$T$")]
-            aspect = lines[i + 1].lower().strip()
-            polarity = lines[i + 2].strip()
+        for i in range(0, len(lines), 9):
+            text_left, _, text_right = [s.lower().strip() for s in lines[i+line_index].partition("$T$")]
+            aspect = lines[i + line_index + 1].lower().strip()
+            polarity = lines[i + line_index + 2].strip()
 
             text_indices = tokenizer.text_to_sequence(text_left + " " + aspect + " " + text_right)
             context_indices = tokenizer.text_to_sequence(text_left + " " + text_right)
