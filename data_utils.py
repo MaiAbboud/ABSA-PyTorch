@@ -150,8 +150,8 @@ class ABSADataset(Dataset):
         all_data = []
         for i in range(0, len(lines), 9):
             text_left, _, text_right = [s.lower().strip() for s in lines[i+line_index].partition("$T$")]
-            aspect = lines[i + line_index + 1].lower().strip()
-            polarity = lines[i + line_index + 2].strip()
+            aspect = lines[i + 7].lower().strip()
+            polarity = lines[i + 8].strip()
 
             text_indices = tokenizer.text_to_sequence(text_left + " " + aspect + " " + text_right)
             context_indices = tokenizer.text_to_sequence(text_left + " " + text_right)
