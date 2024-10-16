@@ -10,6 +10,7 @@ import os
 import sys
 import random
 import numpy
+import pandas as pd
 
 from sklearn import metrics
 from time import strftime, localtime
@@ -24,6 +25,7 @@ from data_utils import build_tokenizer, build_embedding_matrix, Tokenizer4Bert, 
 from models import LSTM, IAN, MemNet, RAM, TD_LSTM, TC_LSTM, Cabasc, ATAE_LSTM, TNet_LF, AOA, MGAN, ASGCN, LCF_BERT
 from models.aen import CrossEntropyLoss_LSR, AEN_BERT
 from models.bert_spc import BERT_SPC
+import model_config as info
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -51,9 +53,10 @@ class Instructor:
             if opt.only_embedding:
                 raise SystemExit("Exiting program, Embedding and tokenizer files are generated")
 
+        self.tokenizer = tokenizer
 
-        self.trainset = ABSADataset(opt.dataset_file['train'], tokenizer)
-        self.testset = ABSADataset(opt.dataset_file['test'], tokenizer)
+        self.trainset = ABSADataset(opt.dataset_file['train'], tokenizer, mode = opt.dataset_mode)
+        self.testset = ABSADataset(opt.dataset_file['test'], tokenizer, mode = opt.dataset_mode)
         assert 0 <= opt.valset_ratio < 1
         if opt.valset_ratio > 0:
             valset_len = int(len(self.trainset) * opt.valset_ratio)
@@ -140,30 +143,73 @@ class Instructor:
 
         return path
 
-    def _evaluate_acc_f1(self, data_loader):
+    def _evaluate_acc_f1(self, data_loader,aspect):
         n_correct, n_total = 0, 0
         t_targets_all, t_outputs_all = None, None
+        process = True
         # switch model to evaluation mode
         self.model.eval()
         with torch.no_grad():
             for i_batch, t_batch in enumerate(data_loader):
-                t_inputs = [t_batch[col].to(self.opt.device) for col in self.opt.inputs_cols]
-                t_targets = t_batch['polarity'].to(self.opt.device)
-                t_outputs = self.model(t_inputs)
+                if aspect != "all":
+                    # evalute model for one aspect
+                    aspect_index = torch.tensor(self.tokenizer.text_to_sequence(aspect))
+                    aspect_index_broadcast = aspect_index.unsqueeze(0).expand_as(t_batch['aspect_indices'])
+                    mask = torch.all(t_batch['aspect_indices'] == aspect_index_broadcast, dim=1)
+                    # Only proceed if there is at least one match
+                    process = mask.any()
 
-                n_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
-                n_total += len(t_outputs)
+                if process:
+                    if aspect != "all":
+                        t_batch = {k: v[mask] for k, v in t_batch.items()}
+                    t_inputs = [t_batch[col].to(self.opt.device) for col in self.opt.inputs_cols]
+                    t_targets = t_batch['polarity'].to(self.opt.device)
+                    t_outputs = self.model(t_inputs)
 
-                if t_targets_all is None:
-                    t_targets_all = t_targets
-                    t_outputs_all = t_outputs
-                else:
-                    t_targets_all = torch.cat((t_targets_all, t_targets), dim=0)
-                    t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0)
+                    n_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
+                    n_total += len(t_outputs)
+
+                    if t_targets_all is None:
+                        t_targets_all = t_targets
+                        t_outputs_all = t_outputs
+                    else:
+                        t_targets_all = torch.cat((t_targets_all, t_targets), dim=0)
+                        t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0)
 
         acc = n_correct / n_total
-        f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1, 2], average='macro')
-        return acc, f1
+        y_true = t_targets_all.cpu()
+        y_pred = torch.argmax(t_outputs_all, -1).cpu()
+
+        f1 = {}
+        f1["f1_avg"] = metrics.f1_score(y_true, y_pred, labels=[0, 1, 2], average='macro')
+        f1["f1_neg"] = metrics.f1_score(y_true,y_pred, labels=[0], average='macro')
+        f1["f1_neutral"] = metrics.f1_score(y_true, y_pred, labels=[1], average='macro')
+        f1["f1_pos"] = metrics.f1_score(y_true, y_pred, labels=[2], average='macro')
+
+        precision = {}
+        precision["precision_avg"] = metrics.precision_score(y_true, y_pred, labels=[0, 1, 2], average='macro')
+        precision["precision_neg"] = metrics.precision_score(y_true, y_pred, labels=[0], average='macro')
+        precision["precision_neutral"] = metrics.precision_score(y_true, y_pred, labels=[1], average='macro')
+        precision["precision_pos"] = metrics.precision_score(y_true, y_pred, labels=[2], average='macro')
+
+        recall = {}
+        recall["recall_avg"] = metrics.recall_score(y_true, y_pred, labels=[0, 1, 2], average='macro')
+        recall["recall_neg"] = metrics.recall_score(y_true, y_pred, labels=[0], average='macro')
+        recall["recall_neutral"] = metrics.recall_score(y_true, y_pred, labels=[1], average='macro')
+        recall["recall_pos"] = metrics.recall_score(y_true, y_pred, labels=[2], average='macro')
+
+        data = {
+            "Negative": [f1["f1_neg"], precision["precision_neg"], recall["recall_neg"]],
+            "Neutral": [f1["f1_neutral"], precision["precision_neutral"], recall["recall_neutral"]],
+            "Positive": [f1["f1_pos"], precision["precision_pos"], recall["recall_pos"]],
+            "Average":[f1["f1_avg"], precision["precision_avg"], recall["recall_avg"]]
+        }
+        
+        index = ["F1", "Precision", "Recall"]
+        metrics_classification = pd.DataFrame(data, index=index)
+
+        return acc,metrics_classification
+    
 
     def run(self):
         # Loss and Optimizer
@@ -177,9 +223,16 @@ class Instructor:
 
         self._reset_params()
         best_model_path = self._train(criterion, optimizer, train_data_loader, val_data_loader)
+        # best_model_path = 'state_dict/aoa_coursera_val_acc_0.837'
         self.model.load_state_dict(torch.load(best_model_path))
-        test_acc, test_f1 = self._evaluate_acc_f1(test_data_loader)
-        logger.info('>> test_acc: {:.4f}, test_f1: {:.4f}'.format(test_acc, test_f1))
+        aspect = "all"
+        test_acc, metrics  = self._evaluate_acc_f1(test_data_loader, aspect = aspect)
+        pd.options.display.float_format = '{:.4f}'.format
+        logger.info("ASPECT : {}".format(aspect))
+        logger.info("test metrics:")
+        logger.info(metrics)
+        logger.info("--------------------------------")
+        logger.info('test_acc: {:.4f}'.format(test_acc))
 
 
 def main():
@@ -210,7 +263,9 @@ def main():
     # The following parameters are only valid for the lcf-bert model
     parser.add_argument('--local_context_focus', default='cdm', type=str, help='local context focus mode, cdw or cdm')
     parser.add_argument('--SRD', default=3, type=int, help='semantic-relative-distance, see the paper of LCF-BERT model')
-    parser.add_argument('--only_embedding', default=False, type=str, help='only generate embedding embdding and tokenizer matrices using glove the break the code ')
+    parser.add_argument('--only_embedding', default=False, type=bool, help='only generate embedding embdding and tokenizer matrices using glove the break the code ')
+    # parser.add_argument('--only_evaluate', default=False, type=str, help='only evaluate the model, without training ')
+    parser.add_argument('--dataset_mode', default=" ", type=str, help='dataset to train the model on')
     opt = parser.parse_args()
 
     if opt.seed is not None:
@@ -222,68 +277,10 @@ def main():
         torch.backends.cudnn.benchmark = False
         os.environ['PYTHONHASHSEED'] = str(opt.seed)
 
-    model_classes = {
-        'lstm': LSTM,
-        'td_lstm': TD_LSTM,
-        'tc_lstm': TC_LSTM,
-        'atae_lstm': ATAE_LSTM,
-        'ian': IAN,
-        'memnet': MemNet,
-        'ram': RAM,
-        'cabasc': Cabasc,
-        'tnet_lf': TNet_LF,
-        'aoa': AOA,
-        'mgan': MGAN,
-        'asgcn': ASGCN,
-        'bert_spc': BERT_SPC,
-        'aen_bert': AEN_BERT,
-        'lcf_bert': LCF_BERT,
-        # default hyper-parameters for LCF-BERT model is as follws:
-        # lr: 2e-5
-        # l2: 1e-5
-        # batch size: 16
-        # num epochs: 5
-    }
-    dataset_files = {
-        'twitter': {
-            'train': './datasets/acl-14-short-data/train.raw',
-            'test': './datasets/acl-14-short-data/test.raw'
-        },
-        'restaurant': {
-            'train': './datasets/semeval14/Restaurants_Train.xml.seg',
-            'test': './datasets/semeval14/Restaurants_Test_Gold.xml.seg'
-        },
-        'laptop': {
-            'train': './datasets/semeval14/Laptops_Train.xml.seg',
-            'test': './datasets/semeval14/Laptops_Test_Gold.xml.seg'
-        },
-        'coursera': {
-            'train': './datasets/coursera/train_Coursera_dataset.seg',
-            'test': './datasets/coursera/test_Coursera_dataset.seg'
-        },
-        'coursera_with_negation': {
-            'train': './datasets/coursera/train_neg__Coursera_dataset.seg',
-            'test': './datasets/coursera/test_neg__Coursera_dataset.seg'
-        }
+    model_classes = info.model_classes
+    dataset_files = info.dataset_files
+    input_colses = info.input_colses
 
-    }
-    input_colses = {
-        'lstm': ['text_indices'],
-        'td_lstm': ['left_with_aspect_indices', 'right_with_aspect_indices'],
-        'tc_lstm': ['left_with_aspect_indices', 'right_with_aspect_indices', 'aspect_indices'],
-        'atae_lstm': ['text_indices', 'aspect_indices'],
-        'ian': ['text_indices', 'aspect_indices'],
-        'memnet': ['context_indices', 'aspect_indices'],
-        'ram': ['text_indices', 'aspect_indices', 'left_indices'],
-        'cabasc': ['text_indices', 'aspect_indices', 'left_with_aspect_indices', 'right_with_aspect_indices'],
-        'tnet_lf': ['text_indices', 'aspect_indices', 'aspect_boundary'],
-        'aoa': ['text_indices', 'aspect_indices'],
-        'mgan': ['text_indices', 'aspect_indices', 'left_indices'],
-        'asgcn': ['text_indices', 'aspect_indices', 'left_indices', 'dependency_graph'],
-        'bert_spc': ['concat_bert_indices', 'concat_segments_indices'],
-        'aen_bert': ['text_bert_indices', 'aspect_bert_indices'],
-        'lcf_bert': ['concat_bert_indices', 'concat_segments_indices', 'text_bert_indices', 'aspect_bert_indices'],
-    }
     initializers = {
         'xavier_uniform_': torch.nn.init.xavier_uniform_,
         'xavier_normal_': torch.nn.init.xavier_normal_,
