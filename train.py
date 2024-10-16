@@ -315,7 +315,9 @@ def main():
     opt.optimizer = optimizers[opt.optimizer]
     opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') \
         if opt.device is None else torch.device(opt.device)
-
+    
+    if not os.path.exists('log'):
+        os.mkdir('log')
     log_file = 'log/{}-{}-{}.log'.format(opt.model_name, opt.dataset, strftime("%y%m%d-%H%M", localtime()))
     logger.addHandler(logging.FileHandler(log_file))
 
