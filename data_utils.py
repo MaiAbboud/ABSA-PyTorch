@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 from transformers import BertTokenizer
 
 
-def build_tokenizer(fnames, max_seq_len, dat_fname):
+def build_tokenizer(fnames, max_seq_len, dat_fname,line_index):
     if os.path.exists(dat_fname):
         print('loading tokenizer:', dat_fname)
         tokenizer = pickle.load(open(dat_fname, 'rb'))
@@ -21,9 +21,9 @@ def build_tokenizer(fnames, max_seq_len, dat_fname):
             fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
             lines = fin.readlines()
             fin.close()
-            for i in range(0, len(lines), 3):
-                text_left, _, text_right = [s.lower().strip() for s in lines[i].partition("$T$")]
-                aspect = lines[i + 1].lower().strip()
+            for i in range(0, len(lines), 8):
+                text_left, _, text_right = [s.lower().strip() for s in lines[i+line_index].partition("$T$")]
+                aspect = lines[i + 6].lower().strip()
                 text_raw = text_left + " " + aspect + " " + text_right
                 text += text_raw + " "
 
@@ -124,34 +124,18 @@ class Tokenizer4Bert:
 
 
 class ABSADataset(Dataset):
-    def __init__(self, fname, tokenizer, mode):
+    def __init__(self, fname, tokenizer,line_index):
         fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
         lines = fin.readlines()
         fin.close()
-        # fin = open(fname+'.graph', 'rb')
-        # idx2graph = pickle.load(fin)
-        # fin.close()
-        match mode:
-            case 'neg_false_keep_all':
-                line_index = 1
-            case 'neg_flase_del_all':
-                line_index = 2
-            case 'neg_flase_del_except_neg':
-                line_index = 3
-            case 'neg_true_keep_all':
-                line_index = 4
-            case 'neg_true_del_all':
-                line_index = 5
-            case 'neg_true_del_except_neg':
-                line_index = 6
-            case _:
-                line_index = 0
 
         all_data = []
-        for i in range(0, len(lines), 9):
+        self.num_lines = 8
+        self.line_index = line_index
+        for i in range(0, len(lines), self.num_lines):
             text_left, _, text_right = [s.lower().strip() for s in lines[i+line_index].partition("$T$")]
-            aspect = lines[i + 7].lower().strip()
-            polarity = lines[i + 8].strip()
+            aspect = lines[i + self.num_lines -2].lower().strip()
+            polarity = lines[i + self.num_lines -1].strip()
 
             text_indices = tokenizer.text_to_sequence(text_left + " " + aspect + " " + text_right)
             context_indices = tokenizer.text_to_sequence(text_left + " " + text_right)

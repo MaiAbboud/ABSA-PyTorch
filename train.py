@@ -55,8 +55,8 @@ class Instructor:
 
         self.tokenizer = tokenizer
 
-        self.trainset = ABSADataset(opt.dataset_file['train'], tokenizer, mode = opt.dataset_mode)
-        self.testset = ABSADataset(opt.dataset_file['test'], tokenizer, mode = opt.dataset_mode)
+        self.trainset = ABSADataset(opt.dataset_file['train'], tokenizer, opt.line_index)
+        self.testset = ABSADataset(opt.dataset_file['test'], tokenizer, mode = opt.line_index)
         assert 0 <= opt.valset_ratio < 1
         if opt.valset_ratio > 0:
             valset_len = int(len(self.trainset) * opt.valset_ratio)
@@ -277,13 +277,6 @@ def main():
     parser.add_argument('--SRD', default=3, type=int, help='semantic-relative-distance, see the paper of LCF-BERT model')
     parser.add_argument('--only_embedding', default=False, type=bool, help='only generate embedding embdding and tokenizer matrices using glove the break the code ')
     # parser.add_argument('--only_evaluate', default=False, type=str, help='only evaluate the model, without training ')
-    # dataset_mode for coursera datasets
-    # 'neg_false_keep_all'
-    # 'neg_flase_del_all'
-    # 'neg_flase_del_except_neg'
-    # 'neg_true_keep_all'
-    # 'neg_true_del_all'
-    # 'neg_true_del_except_neg'
     parser.add_argument('--dataset_mode', default="", type=str, help='dataset to train the model on')
     # parser.add_argument('--evaluate_aspect', default="all", type=str, help='evaluate test dataset on this aspect ')
     opt = parser.parse_args()
@@ -326,6 +319,22 @@ def main():
     log_file = 'log/{}-{}-{}.log'.format(opt.model_name, opt.dataset, strftime("%y%m%d-%H%M", localtime()))
     logger.addHandler(logging.FileHandler(log_file))
 
+    match opt.dataset_mode:
+        case 'neg_false_keep_all':
+            line_index = 0
+        case 'neg_flase_del_all':
+            line_index = 1
+        case 'neg_flase_del_except_neg':
+            line_index = 2
+        case 'neg_true_keep_all':
+            line_index = 3
+        case 'neg_true_del_all':
+            line_index = 4
+        case 'neg_true_del_except_neg':
+            line_index = 5
+        case _:
+            line_index = 0
+    opt.line_index = line_index
     ins = Instructor(opt)
     ins.run()
 
