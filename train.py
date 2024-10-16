@@ -125,14 +125,24 @@ class Instructor:
                     train_loss = loss_total / n_total
                     logger.info('loss: {:.4f}, acc: {:.4f}'.format(train_loss, train_acc))
 
-            val_acc, val_f1 = self._evaluate_acc_f1(val_data_loader)
-            logger.info('> val_acc: {:.4f}, val_f1: {:.4f}'.format(val_acc, val_f1))
+            val_acc, df_metrics = self._evaluate_acc_f1(val_data_loader,aspect="all")
+
+            pd.options.display.float_format = '{:.4f}'.format
+            logger.info("val metrics:")
+            logger.info(df_metrics)
+            logger.info("--------------------------------")
+            logger.info('val_acc: {:.4f}'.format(val_acc))
+            val_f1 = df_metrics["Average"][0]
+
+            # logger.info('> val_acc: {:.4f}, val_f1: {:.4f}'.format(val_acc))
+
             if val_acc > max_val_acc:
                 max_val_acc = val_acc
                 max_val_epoch = i_epoch
-                if not os.path.exists('state_dict'):
-                    os.mkdir('state_dict')
-                path = 'state_dict/{0}_{1}_val_acc_{2}'.format(self.opt.model_name, self.opt.dataset, round(val_acc, 4))
+                path = 'state_dict/{0}_{1}_{2}/'.format(self.opt.dataset , self.opt.model_name, self.opt.dataset_mode)
+                if not os.path.exists(path):
+                    os.mkdir(path)
+                path = '{0}val_acc_{1}'.format(path,round(val_acc, 4))
                 torch.save(self.model.state_dict(), path)
                 logger.info('>> saved: {}'.format(path))
             if val_f1 > max_val_f1:
@@ -225,14 +235,16 @@ class Instructor:
         best_model_path = self._train(criterion, optimizer, train_data_loader, val_data_loader)
         # best_model_path = 'state_dict/aoa_coursera_val_acc_0.837'
         self.model.load_state_dict(torch.load(best_model_path))
+        aspects = ["all" , "the course" , "the teacher"]
         aspect = "all"
-        test_acc, metrics  = self._evaluate_acc_f1(test_data_loader, aspect = aspect)
-        pd.options.display.float_format = '{:.4f}'.format
-        logger.info("ASPECT : {}".format(aspect))
-        logger.info("test metrics:")
-        logger.info(metrics)
-        logger.info("--------------------------------")
-        logger.info('test_acc: {:.4f}'.format(test_acc))
+        for aspect in aspects:
+            test_acc, metrics  = self._evaluate_acc_f1(test_data_loader, aspect = aspect)
+            pd.options.display.float_format = '{:.4f}'.format
+            logger.info("ASPECT : {}".format(aspect))
+            logger.info("test metrics:")
+            logger.info(metrics)
+            logger.info("--------------------------------")
+            logger.info('test_acc: {:.4f}'.format(test_acc))
 
 
 def main():
@@ -240,7 +252,7 @@ def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--model_name', default='bert_spc', type=str)
     parser.add_argument('--model_name', default='aoa', type=str)
-    parser.add_argument('--dataset', default='coursera', type=str, help='twitter, restaurant, laptop')
+    parser.add_argument('--dataset', default='preprocessed_coursera', type=str, help='twitter, restaurant, laptop')
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
     parser.add_argument('--lr', default=2e-5, type=float, help='try 5e-5, 2e-5 for BERT, 1e-3 for others')
@@ -273,6 +285,7 @@ def main():
     # 'neg_true_del_all'
     # 'neg_true_del_except_neg'
     parser.add_argument('--dataset_mode', default="", type=str, help='dataset to train the model on')
+    # parser.add_argument('--evaluate_aspect', default="all", type=str, help='evaluate test dataset on this aspect ')
     opt = parser.parse_args()
 
     if opt.seed is not None:
