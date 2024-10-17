@@ -22,11 +22,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 
 from data_utils import build_tokenizer, build_embedding_matrix, Tokenizer4Bert, ABSADataset
-from models import LSTM, IAN, MemNet, RAM, TD_LSTM, TC_LSTM, Cabasc, ATAE_LSTM, TNet_LF, AOA, MGAN, ASGCN, LCF_BERT
-from models.aen import CrossEntropyLoss_LSR, AEN_BERT
-from models.bert_spc import BERT_SPC
 import model_config as info
-
+from preprocessing_coursera import PROCESSED_COLUMNS
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -323,24 +320,10 @@ def main():
     # every dataset has 3 line for every item
     opt.dataset_line_count = 3
     if opt.dataset == "preprocessed_coursera":
-        opt.dataset_line_count = 8
+        opt.dataset_line_count = len(PROCESSED_COLUMNS)
+        
     # for only preprocessed_coursera
-    match opt.dataset_mode:
-        case 'neg_false_keep_all':
-            dataset_text_index = 0
-        case 'neg_flase_del_all':
-            dataset_text_index = 1
-        case 'neg_flase_del_except_neg':
-            dataset_text_index = 2
-        case 'neg_true_keep_all':
-            dataset_text_index = 3
-        case 'neg_true_del_all':
-            dataset_text_index = 4
-        case 'neg_true_del_except_neg':
-            dataset_text_index = 5
-        case _:
-            dataset_text_index = 0
-    opt.dataset_text_index = dataset_text_index
+    opt.dataset_text_index = PROCESSED_COLUMNS.index(opt.dataset_mode)
     ins = Instructor(opt)
     ins.run()
 
