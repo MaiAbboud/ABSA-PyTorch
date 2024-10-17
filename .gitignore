@@ -36,3 +36,7 @@ Thumbs.db
 # generated files
 bin/
 gen/
+state_dict/
+state_dict_preprocessing_dataset/
+embedding_dataset/
+tokenizer_dataset/
