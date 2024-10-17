@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 import os
 
 
-def split_dataset(df,dataset_name,output_folder):
+def split_dataset(df,dataset_name,output_folder,output_column):
 
     # Split the dataset based on the 'aspect' column
     df_teacher = df[df['aspect'] == 'the teacher']
@@ -22,8 +22,8 @@ def split_dataset(df,dataset_name,output_folder):
     test_df = test_df.sample(frac=1, random_state=42).reset_index(drop=True)
 
     # Select only the required columns
-    train_df = train_df[['processed_review', 'aspect', 'label']]
-    test_df = test_df[['processed_review', 'aspect', 'label']]
+    train_df = train_df[output_column]
+    test_df = test_df[output_column]
 
     # Convert labels from 0, 1, 2 to -1, 0, 1
     label_mapping = {0: -1, 1: 0, 2: 1}
