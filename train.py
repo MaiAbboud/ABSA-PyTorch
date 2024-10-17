@@ -44,7 +44,7 @@ class Instructor:
             tokenizer = build_tokenizer(
                 fnames=[opt.dataset_file['train'], opt.dataset_file['test']],
                 max_seq_len=opt.max_seq_len,
-                dat_fname='{0}_{1}_tokenizer.dat'.format(opt.dataset,opt.dataset_mode))
+                dat_fname='{0}_{1}_tokenizer.dat'.format(opt.dataset,opt.dataset_mode),opt=opt)
             embedding_matrix = build_embedding_matrix(
                 word2idx=tokenizer.word2idx,
                 embed_dim=opt.embed_dim,
@@ -55,8 +55,8 @@ class Instructor:
 
         self.tokenizer = tokenizer
 
-        self.trainset = ABSADataset(opt.dataset_file['train'], tokenizer, opt.line_index)
-        self.testset = ABSADataset(opt.dataset_file['test'], tokenizer, mode = opt.line_index)
+        self.trainset = ABSADataset(opt.dataset_file['train'], tokenizer, opt)
+        self.testset = ABSADataset(opt.dataset_file['test'], tokenizer, opt)
         assert 0 <= opt.valset_ratio < 1
         if opt.valset_ratio > 0:
             valset_len = int(len(self.trainset) * opt.valset_ratio)
@@ -139,10 +139,10 @@ class Instructor:
             if val_acc > max_val_acc:
                 max_val_acc = val_acc
                 max_val_epoch = i_epoch
-                path = 'state_dict/{0}_{1}_{2}/'.format(self.opt.dataset , self.opt.model_name, self.opt.dataset_mode)
+                path = 'state_dict/{0}_{1}_{2}'.format(self.opt.dataset , self.opt.model_name, self.opt.dataset_mode)
                 if not os.path.exists(path):
-                    os.mkdir(path)
-                path = '{0}val_acc_{1}'.format(path,round(val_acc, 4))
+                    os.makedirs(path)
+                path = '{0}/val_acc_{1}'.format(path,round(val_acc, 4))
                 torch.save(self.model.state_dict(), path)
                 logger.info('>> saved: {}'.format(path))
             if val_f1 > max_val_f1:
@@ -253,6 +253,7 @@ def main():
     # parser.add_argument('--model_name', default='bert_spc', type=str)
     parser.add_argument('--model_name', default='aoa', type=str)
     parser.add_argument('--dataset', default='preprocessed_coursera', type=str, help='twitter, restaurant, laptop')
+    parser.add_argument('--dataset_mode', default="neg_true_del_all", type=str, help=' only for preprocessed_coursera dataset,choose witch preprocessing to train the model on')
     parser.add_argument('--optimizer', default='adam', type=str)
     parser.add_argument('--initializer', default='xavier_uniform_', type=str)
     parser.add_argument('--lr', default=2e-5, type=float, help='try 5e-5, 2e-5 for BERT, 1e-3 for others')
@@ -277,8 +278,6 @@ def main():
     parser.add_argument('--SRD', default=3, type=int, help='semantic-relative-distance, see the paper of LCF-BERT model')
     parser.add_argument('--only_embedding', default=False, type=bool, help='only generate embedding embdding and tokenizer matrices using glove the break the code ')
     # parser.add_argument('--only_evaluate', default=False, type=str, help='only evaluate the model, without training ')
-    parser.add_argument('--dataset_mode', default="", type=str, help='dataset to train the model on')
-    # parser.add_argument('--evaluate_aspect', default="all", type=str, help='evaluate test dataset on this aspect ')
     opt = parser.parse_args()
 
     if opt.seed is not None:
@@ -321,22 +320,27 @@ def main():
     log_file = 'log/{}-{}-{}.log'.format(opt.model_name, opt.dataset, strftime("%y%m%d-%H%M", localtime()))
     logger.addHandler(logging.FileHandler(log_file))
 
+    # every dataset has 3 line for every item
+    opt.dataset_line_count = 3
+    if opt.dataset == "preprocessed_coursera":
+        opt.dataset_line_count = 8
+    # for only preprocessed_coursera
     match opt.dataset_mode:
         case 'neg_false_keep_all':
-            line_index = 0
+            dataset_text_index = 0
         case 'neg_flase_del_all':
-            line_index = 1
+            dataset_text_index = 1
         case 'neg_flase_del_except_neg':
-            line_index = 2
+            dataset_text_index = 2
         case 'neg_true_keep_all':
-            line_index = 3
+            dataset_text_index = 3
         case 'neg_true_del_all':
-            line_index = 4
+            dataset_text_index = 4
         case 'neg_true_del_except_neg':
-            line_index = 5
+            dataset_text_index = 5
         case _:
-            line_index = 0
-    opt.line_index = line_index
+            dataset_text_index = 0
+    opt.dataset_text_index = dataset_text_index
     ins = Instructor(opt)
     ins.run()
 

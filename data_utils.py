@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 from transformers import BertTokenizer
 
 
-def build_tokenizer(fnames, max_seq_len, dat_fname,line_index):
+def build_tokenizer(fnames, max_seq_len, dat_fname,opt):
     if os.path.exists(dat_fname):
         print('loading tokenizer:', dat_fname)
         tokenizer = pickle.load(open(dat_fname, 'rb'))
@@ -21,9 +21,9 @@ def build_tokenizer(fnames, max_seq_len, dat_fname,line_index):
             fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
             lines = fin.readlines()
             fin.close()
-            for i in range(0, len(lines), 8):
-                text_left, _, text_right = [s.lower().strip() for s in lines[i+line_index].partition("$T$")]
-                aspect = lines[i + 6].lower().strip()
+            for i in range(0, len(lines), opt.dataset_line_count):
+                text_left, _, text_right = [s.lower().strip() for s in lines[i+opt.dataset_text_index].partition("$T$")]
+                aspect = lines[i + opt.dataset_line_count-2].lower().strip()
                 text_raw = text_left + " " + aspect + " " + text_right
                 text += text_raw + " "
 
@@ -124,18 +124,16 @@ class Tokenizer4Bert:
 
 
 class ABSADataset(Dataset):
-    def __init__(self, fname, tokenizer,line_index):
+    def __init__(self, fname, tokenizer,opt):
         fin = open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
         lines = fin.readlines()
         fin.close()
 
         all_data = []
-        self.num_lines = 8
-        self.line_index = line_index
-        for i in range(0, len(lines), self.num_lines):
-            text_left, _, text_right = [s.lower().strip() for s in lines[i+line_index].partition("$T$")]
-            aspect = lines[i + self.num_lines -2].lower().strip()
-            polarity = lines[i + self.num_lines -1].strip()
+        for i in range(0, len(lines), opt.dataset_line_count):
+            text_left, _, text_right = [s.lower().strip() for s in lines[i+opt.dataset_text_index].partition("$T$")]
+            aspect = lines[i + opt.dataset_line_count -2].lower().strip()
+            polarity = lines[i + opt.dataset_line_count -1].strip()
 
             text_indices = tokenizer.text_to_sequence(text_left + " " + aspect + " " + text_right)
             context_indices = tokenizer.text_to_sequence(text_left + " " + text_right)
