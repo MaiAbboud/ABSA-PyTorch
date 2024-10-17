@@ -38,14 +38,21 @@ class Instructor:
             bert = BertModel.from_pretrained(opt.pretrained_bert_name)
             self.model = opt.model_class(bert, opt).to(opt.device)
         else:
+            path_token ,path_embed  = 'tokenizer_dataset' ,'embedding_dataset'
+            if not os.path.exists(path_token):
+                os.makedirs(path_token)
+
             tokenizer = build_tokenizer(
                 fnames=[opt.dataset_file['train'], opt.dataset_file['test']],
                 max_seq_len=opt.max_seq_len,
-                dat_fname='{0}_{1}_tokenizer.dat'.format(opt.dataset,opt.dataset_mode),opt=opt)
+                dat_fname='{0}/{1}_{2}_tokenizer.dat'.format(path_token,opt.dataset,opt.dataset_mode),opt=opt)
+            
+            if not os.path.exists(path_embed):
+                os.makedirs(path_embed)
             embedding_matrix = build_embedding_matrix(
                 word2idx=tokenizer.word2idx,
                 embed_dim=opt.embed_dim,
-                dat_fname='{0}_{1}_{2}_embedding_matrix.dat'.format(str(opt.embed_dim), opt.dataset, opt.dataset_mode))
+                dat_fname='{0}/{1}_{2}_{3}_embedding_matrix.dat'.format(path_embed,str(opt.embed_dim), opt.dataset, opt.dataset_mode))
             self.model = opt.model_class(embedding_matrix, opt).to(opt.device)
             if opt.only_embedding:
                 raise SystemExit("Exiting program, Embedding and tokenizer files are generated")
