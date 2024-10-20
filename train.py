@@ -24,6 +24,8 @@ from torch.utils.data import DataLoader, random_split
 from data_utils import build_tokenizer, build_embedding_matrix, Tokenizer4Bert, ABSADataset
 import model_config as info
 from preprocessing_coursera import PROCESSED_COLUMNS
+from visualizer import save_pickle
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -54,6 +56,12 @@ class Instructor:
                 embed_dim=opt.embed_dim,
                 dat_fname='{0}/{1}_{2}_{3}_embedding_matrix.dat'.format(path_embed,str(opt.embed_dim), opt.dataset, opt.dataset_mode))
             self.model = opt.model_class(embedding_matrix, opt).to(opt.device)
+            
+            # if  opt.model_name == 'ours':
+            #     opt.tokenizer_bert = Tokenizer4Bert(opt.max_seq_len, opt.pretrained_bert_name)
+            #     bert = BertModel.from_pretrained(opt.pretrained_bert_name)
+            #     self.model = opt.model_class(bert,embedding_matrix, opt).to(opt.device)
+            
             if opt.only_embedding:
                 raise SystemExit("Exiting program, Embedding and tokenizer files are generated")
 
@@ -241,8 +249,13 @@ class Instructor:
         self.model.load_state_dict(torch.load(best_model_path))
         aspects = ["all" , "the course" , "the teacher"]
         aspect = "all"
+        result_path = 'results/{0}_{1}_{2}'.format(self.opt.dataset , self.opt.model_name, self.opt.dataset_mode)
+        if not os.path.exists(result_path):
+            os.makedirs(result_path)
+            save_pickle(self.opt, os.path.join(result_path,"train_argument.pkl"))
         for aspect in aspects:
             test_acc, metrics  = self._evaluate_acc_f1(test_data_loader, aspect = aspect)
+            save_pickle({test_acc,metrics}, os.path.join(result_path,"{}_test_metrics.pkl".format(aspect)))
             pd.options.display.float_format = '{:.4f}'.format
             logger.info("ASPECT : {}".format(aspect))
             logger.info("test metrics:")
