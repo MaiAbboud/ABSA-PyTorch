@@ -1,5 +1,5 @@
 
-from models import LSTM, IAN, MemNet, RAM, TD_LSTM, TC_LSTM, Cabasc, ATAE_LSTM, TNet_LF, AOA, MGAN, ASGCN, LCF_BERT
+from models import LSTM, IAN, MemNet, RAM, TD_LSTM, TC_LSTM, Cabasc, ATAE_LSTM, TNet_LF, AOA, MGAN, ASGCN, LCF_BERT , OURS
 from models.aen import CrossEntropyLoss_LSR, AEN_BERT
 from models.bert_spc import BERT_SPC
 
@@ -19,6 +19,7 @@ model_classes = {
         'bert_spc': BERT_SPC,
         'aen_bert': AEN_BERT,
         'lcf_bert': LCF_BERT,
+        'ours' : OURS,
         # default hyper-parameters for LCF-BERT model is as follws:
         # lr: 2e-5
         # l2: 1e-5
@@ -65,4 +66,6 @@ input_colses = {
     'bert_spc': ['concat_bert_indices', 'concat_segments_indices'],
     'aen_bert': ['text_bert_indices', 'aspect_bert_indices'],
     'lcf_bert': ['concat_bert_indices', 'concat_segments_indices', 'text_bert_indices', 'aspect_bert_indices'],
+    # 'ours' : ['text_indices', 'aspect_indices','text_bert_indices','aspect_bert_indices']
+    'ours' : ['text_indices', 'aspect_indices']
 }

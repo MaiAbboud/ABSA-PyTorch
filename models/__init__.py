@@ -16,3 +16,4 @@ from models.aoa import AOA
 from models.mgan import MGAN
 from models.lcf_bert import LCF_BERT
 from models.asgcn import ASGCN
+from models.ours import OURS
