@@ -10,9 +10,6 @@ import argparse
 import numpy as np
 
 from data_utils import build_tokenizer, build_embedding_matrix, Tokenizer4Bert, pad_and_truncate
-from models import LSTM, IAN, MemNet, RAM, TD_LSTM, TC_LSTM, Cabasc, ATAE_LSTM, TNet_LF, AOA, MGAN, ASGCN, LCF_BERT
-from models.aen import CrossEntropyLoss_LSR, AEN_BERT
-from models.bert_spc import BERT_SPC
 import model_config as info
 # from dependency_graph import dependency_adj_matrix
 
