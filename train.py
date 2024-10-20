@@ -255,7 +255,8 @@ class Instructor:
             save_pickle(self.opt, os.path.join(result_path,"train_argument.pkl"))
         for aspect in aspects:
             test_acc, metrics  = self._evaluate_acc_f1(test_data_loader, aspect = aspect)
-            save_pickle({test_acc,metrics}, os.path.join(result_path,"{}_test_metrics.pkl".format(aspect)))
+            save_pickle(test_acc, os.path.join(result_path,"{}_test_acc.pkl".format(aspect)))
+            save_pickle(metrics, os.path.join(result_path,"{}_test_metrics.pkl".format(aspect)))
             pd.options.display.float_format = '{:.4f}'.format
             logger.info("ASPECT : {}".format(aspect))
             logger.info("test metrics:")
