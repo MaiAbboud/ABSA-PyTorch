@@ -138,7 +138,7 @@ class Instructor:
                     logger.info('loss: {:.4f}, acc: {:.4f}'.format(train_loss, train_acc))
 
             val_acc, val_f1, val_precision, val_recall = self._evaluate_acc_f1(val_data_loader,aspect="all")
-            val_f1 = val_f1["f1_avg"]
+            # val_f1 = val_f1["f1_avg"]
 
             
             pd.options.display.float_format = '{:.4f}'.format
