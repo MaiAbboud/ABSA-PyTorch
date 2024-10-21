@@ -137,14 +137,21 @@ class Instructor:
                     train_loss = loss_total / n_total
                     logger.info('loss: {:.4f}, acc: {:.4f}'.format(train_loss, train_acc))
 
-            val_acc, df_metrics = self._evaluate_acc_f1(val_data_loader,aspect="all")
+            val_acc, val_f1, val_precision, val_recall = self._evaluate_acc_f1(val_data_loader,aspect="all")
+            val_f1 = val_f1["f1_avg"]
 
+            
             pd.options.display.float_format = '{:.4f}'.format
-            logger.info("val metrics:")
-            logger.info(df_metrics)
-            logger.info("--------------------------------")
+            # logger.info("val metrics:")
+            # logger.info(df_metrics)
+            # logger.info("--------------------------------")
+            # logger.info('val_acc: {:.4f}'.format(val_acc))
+            # val_f1 = df_metrics["Average"][0]
+
             logger.info('val_acc: {:.4f}'.format(val_acc))
-            val_f1 = df_metrics["Average"][0]
+            logger.info('val_f1: {:.4f}'.format(val_f1["f1_avg"]))
+            # logger.info('val_precision: {:.4f}'.format(val_precision))
+            # logger.info('val_recall: {:.4f}'.format(val_recall))
 
             # logger.info('> val_acc: {:.4f}, val_f1: {:.4f}'.format(val_acc))
 
@@ -157,8 +164,9 @@ class Instructor:
                 path = '{0}/val_acc_{1}'.format(path,round(val_acc, 4))
                 torch.save(self.model.state_dict(), path)
                 logger.info('>> saved: {}'.format(path))
-            if val_f1 > max_val_f1:
-                max_val_f1 = val_f1
+
+            if val_f1["f1_avg"] > max_val_f1:
+                max_val_f1 = val_f1["f1_avg"]
             if i_epoch - max_val_epoch >= self.opt.patience:
                 print('>> early stop.')
                 break
@@ -220,17 +228,17 @@ class Instructor:
         recall["recall_neutral"] = metrics.recall_score(y_true, y_pred, labels=[1], average='macro')
         recall["recall_pos"] = metrics.recall_score(y_true, y_pred, labels=[2], average='macro')
 
-        data = {
-            "Negative": [f1["f1_neg"], precision["precision_neg"], recall["recall_neg"]],
-            "Neutral": [f1["f1_neutral"], precision["precision_neutral"], recall["recall_neutral"]],
-            "Positive": [f1["f1_pos"], precision["precision_pos"], recall["recall_pos"]],
-            "Average":[f1["f1_avg"], precision["precision_avg"], recall["recall_avg"]]
-        }
+        # data = {
+        #     "Negative": [f1["f1_neg"], precision["precision_neg"], recall["recall_neg"]],
+        #     "Neutral": [f1["f1_neutral"], precision["precision_neutral"], recall["recall_neutral"]],
+        #     "Positive": [f1["f1_pos"], precision["precision_pos"], recall["recall_pos"]],
+        #     "Average":[f1["f1_avg"], precision["precision_avg"], recall["recall_avg"]]
+        # }
         
-        index = ["F1", "Precision", "Recall"]
-        metrics_classification = pd.DataFrame(data, index=index)
+        # index = ["F1", "Precision", "Recall"]
+        # metrics_classification = pd.DataFrame(data, index=index)
 
-        return acc,metrics_classification
+        return acc,f1,precision,recall
     
 
     def run(self):
@@ -254,15 +262,19 @@ class Instructor:
             os.makedirs(result_path)
             save_pickle(self.opt, os.path.join(result_path,"train_argument.pkl"))
         for aspect in aspects:
-            test_acc, metrics  = self._evaluate_acc_f1(test_data_loader, aspect = aspect)
+            test_acc, test_f1, test_precision, test_recall  = self._evaluate_acc_f1(test_data_loader, aspect = aspect)
             save_pickle(test_acc, os.path.join(result_path,"{}_test_acc.pkl".format(aspect)))
-            save_pickle(metrics, os.path.join(result_path,"{}_test_metrics.pkl".format(aspect)))
+            save_pickle(test_f1, os.path.join(result_path,"{}_test_f1.pkl".format(aspect)))
+            save_pickle(test_precision, os.path.join(result_path,"{}_test_precision.pkl".format(aspect)))
+            save_pickle(test_recall, os.path.join(result_path,"{}_test_recall.pkl".format(aspect)))
+
+            
             pd.options.display.float_format = '{:.4f}'.format
             logger.info("ASPECT : {}".format(aspect))
-            logger.info("test metrics:")
-            logger.info(metrics)
-            logger.info("--------------------------------")
             logger.info('test_acc: {:.4f}'.format(test_acc))
+            logger.info('test_f1: {:.4f}'.format(test_f1))
+            logger.info('test_precision: {:.4f}'.format(test_precision))
+            logger.info('test_recall: {:.4f}'.format(test_recall))
 
 
 def main():
